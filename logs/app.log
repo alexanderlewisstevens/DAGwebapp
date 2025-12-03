@@ -1,0 +1,76 @@
+2025-12-03 15:19:31,711 - causal_playground - INFO - <module> - TEST: Logging appears to work.
+2025-12-03 15:42:08,668 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:42:08,668 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:42:09,886 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:42:09,886 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:44:09,400 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:44:09,400 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:45:11,855 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:45:11,855 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:45:21,746 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:45:21,747 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:45:30,573 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:45:30,573 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:45:44,624 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:45:44,624 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:45:57,526 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:45:57,526 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:49:20,771 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:49:20,771 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:49:26,493 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:49:26,493 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:49:31,063 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:49:31,063 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:50:01,172 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:50:01,172 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:50:12,710 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:50:12,710 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:50:49,552 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:50:49,552 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:50:59,424 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:50:59,424 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:53:26,710 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:53:26,710 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:53:37,171 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:53:37,171 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:53:48,654 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:53:48,654 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:53:59,606 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:53:59,606 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:54:13,676 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:54:13,676 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:54:17,221 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:54:17,222 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:55:23,898 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:55:23,899 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 15:55:25,766 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 15:55:25,766 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:06:13,771 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:06:13,771 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:06:25,382 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:06:25,382 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:07:21,562 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:07:21,563 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:07:21,731 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:07:21,732 - causal_playground - INFO - update_dag - DAG rendered - nodes=0 edges=0
+2025-12-03 16:07:21,732 - causal_playground - INFO - dag_to_figure - Rendering DAG - nodes=0 edges=0
+2025-12-03 16:07:21,733 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:07:21,733 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=0 edges=0
+2025-12-03 16:14:15,339 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:14:15,339 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:14:17,344 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:14:17,344 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:14:17,924 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:14:17,925 - causal_playground - INFO - update_dag - DAG rendered - nodes=0 edges=0
+2025-12-03 16:14:17,925 - causal_playground - INFO - dag_to_figure - Rendering DAG - nodes=0 edges=0
+2025-12-03 16:14:17,929 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:14:17,945 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=0 edges=0
+2025-12-03 16:15:19,091 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:15:19,091 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:15:21,079 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:15:21,079 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-03 16:15:21,274 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:15:21,274 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-03 16:15:21,275 - causal_playground - INFO - update_dag - DAG rendered - nodes=0 edges=0
+2025-12-03 16:15:21,275 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=0 edges=0
+2025-12-03 16:15:21,277 - causal_playground - INFO - dag_to_figure - Rendering DAG - nodes=0 edges=0

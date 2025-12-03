@@ -1,0 +1,8 @@
+dash>=2.14
+dash-cytoscape>=0.3.0
+pgmpy==0.1.24
+pandas>=1.5
+scipy>=1.10
+seaborn>=0.12
+matplotlib>=3.7
+networkx>=3.0
