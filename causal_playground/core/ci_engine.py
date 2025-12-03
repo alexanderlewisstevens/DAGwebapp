@@ -57,7 +57,7 @@ def _condition_label(group_key: Any, conds: Sequence[str]) -> str:
 def conditional_ci_summary(
     df: pd.DataFrame, x: str, y: str, conds: Sequence[str] | None
 ) -> pd.DataFrame:
-    """Compute chi-square tests of independence across conditioning slices."""
+    """Compute chi-square tests of independence across conditioning slices with contingency details."""
     conds = conds or []
     rows: List[Dict[str, Any]] = []
     if conds:
@@ -89,6 +89,8 @@ def conditional_ci_summary(
             continue
         chi2, p, dof, _ = chi2_contingency(table)
         cramers_v = cramers_v_from_table(table, chi2_stat=chi2)
+        counts = table.values.tolist()
+        probs = (table / table.values.sum()).fillna(0.0).values.tolist()
         rows.append(
             {
                 "condition": _condition_label(group_key, conds),
@@ -97,6 +99,10 @@ def conditional_ci_summary(
                 "p": float(p),
                 "dof": int(dof),
                 "cramers_v": float(cramers_v),
+                "contingency_counts": counts,
+                "contingency_probs": probs,
+                "x_levels": list(table.index),
+                "y_levels": list(table.columns),
             }
         )
     return pd.DataFrame(rows)

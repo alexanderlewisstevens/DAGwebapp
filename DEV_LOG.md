@@ -39,3 +39,18 @@
 - Added helper to initialize a DAG with one node per dataset column.
 - Uploading a CSV auto-populates the DAG if it is empty; existing DAG edits are preserved.
 - Updated docs accordingly and added a unit test for the new helper.
+
+[2025-12-03 16:55] QA checklist and smoke workflow test
+- Added a README QA checklist covering upload → DAG auto-nodes → edge edits → DAG→CI mapping → CI runs → DAG vs Data → persistence.
+- Added a smoke workflow test to exercise dag_from_columns, implied independencies, and CI independence tests on a tiny synthetic dataset.
+- Standardised on `sample_data/starter_5vars.csv` as the shared demo dataset for internal QA and client demos.
+
+[2025-12-03 17:05] Sample dataset loader
+- Added in-app sample dataset controls (dropdown + button) to load starter_5vars without a local upload.
+- Shared data-load callback now handles both uploads and sample loading.
+[2025-12-03 17:10] Shared demo CSV and client docs
+- Committed canonical demo CSV at `causal_playground/sample_data/starter_5vars.csv` (A→B→C, A→E, D noise).
+- README restructured for clients: shared dataset, quick start, QA checklist, and usage flow spelled out.
+[2025-12-03 17:20] Additional sample datasets
+- Added more sample options (chain clean, fork clean, collider clean, independent) to the in-app loader and bundled CSVs under `sample_data/`.
+- Sample generator covers these scenarios for quick demos (including noise-free cases).

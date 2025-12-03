@@ -73,3 +73,11 @@ def test_test_independencies_respects_alpha():
 
     tested = test_independencies(df, independencies, alpha=0.5)
     assert (tested["decision"] == "fail_to_reject").all()
+
+
+def test_contingency_probs_returned_in_summary():
+    df = pd.DataFrame({"x": ["a", "a", "b"], "y": ["u", "v", "u"]})
+    summary = conditional_ci_summary(df, "x", "y", [])
+    assert "contingency_probs" in summary.columns
+    probs = summary.iloc[0]["contingency_probs"]
+    assert abs(sum(sum(row) for row in probs) - 1.0) < 1e-6

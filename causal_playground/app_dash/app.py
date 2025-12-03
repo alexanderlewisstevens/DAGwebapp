@@ -6,10 +6,14 @@ import base64
 import io
 import logging
 import json
+from io import StringIO
 from typing import List
+
+import numpy as np
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import dash
 from dash import Dash, Input, Output, State, callback, dash_table, dcc, html, no_update
 import dash_cytoscape as cyto
@@ -58,8 +62,69 @@ def _dag_nodes_from_elements(elements: list[dict] | None) -> List[str]:
 def _base_stylesheet():
     return [
         {"selector": "node", "style": {"label": "data(label)", "background-color": "#90caf9"}},
-        {"selector": "edge", "style": {"line-color": "#424242", "target-arrow-shape": "vee"}},
+        {
+            "selector": "edge",
+            "style": {
+                "curve-style": "bezier",
+                "target-arrow-shape": "triangle",
+                "target-arrow-color": "#424242",
+                "line-color": "#424242",
+                "arrow-scale": 1.5,
+            },
+        },
     ]
+
+
+def _generate_sample_df(name: str) -> pd.DataFrame | None:
+    """Return a sample dataset by name."""
+    if name == "starter_5vars":
+        np.random.seed(0)
+        N = 500
+        A = np.random.binomial(1, 0.5, size=N)
+        B = np.array([np.random.binomial(1, 0.2 if a == 0 else 0.8) for a in A])
+        C = np.array([np.random.binomial(1, 0.1 if b == 0 else 0.7) for b in B])
+        D = np.random.binomial(1, 0.5, size=N)
+        E = np.array([np.random.binomial(1, 0.3 if a == 0 else 0.7) for a in A])
+        df = pd.DataFrame({"A": A, "B": B, "C": C, "D": D, "E": E})
+        logger.info("Loaded sample dataset 'starter_5vars' shape=%s", df.shape)
+        return df
+    if name == "chain_clean":
+        np.random.seed(1)
+        N = 200
+        A = np.random.binomial(1, 0.5, size=N)
+        B = A.copy()
+        C = B.copy()
+        df = pd.DataFrame({"A": A, "B": B, "C": C})
+        logger.info("Loaded sample dataset 'chain_clean' shape=%s", df.shape)
+        return df
+    if name == "fork_clean":
+        np.random.seed(2)
+        N = 200
+        B = np.random.binomial(1, 0.5, size=N)
+        A = B.copy()
+        C = B.copy()
+        df = pd.DataFrame({"A": A, "B": B, "C": C})
+        logger.info("Loaded sample dataset 'fork_clean' shape=%s", df.shape)
+        return df
+    if name == "collider_clean":
+        np.random.seed(3)
+        N = 200
+        A = np.random.binomial(1, 0.5, size=N)
+        B = np.random.binomial(1, 0.5, size=N)
+        C = (A ^ B).astype(int)
+        df = pd.DataFrame({"A": A, "B": B, "C": C})
+        logger.info("Loaded sample dataset 'collider_clean' shape=%s", df.shape)
+        return df
+    if name == "independent":
+        np.random.seed(4)
+        N = 200
+        A = np.random.binomial(1, 0.5, size=N)
+        B = np.random.binomial(1, 0.5, size=N)
+        C = np.random.binomial(1, 0.5, size=N)
+        df = pd.DataFrame({"A": A, "B": B, "C": C})
+        logger.info("Loaded sample dataset 'independent' shape=%s", df.shape)
+        return df
+    return None
 
 app = Dash(__name__)
 server = app.server
@@ -81,6 +146,25 @@ app.layout = html.Div(
                 "margin": "10px",
             },
             multiple=False,
+        ),
+        html.Div(
+            [
+                html.Label("Or try a sample dataset"),
+                dcc.Dropdown(
+                    id="sample-dataset-dropdown",
+                    options=[
+                        {"label": "Starter 5 vars (A→B→C, A→E, D noise)", "value": "starter_5vars"},
+                        {"label": "Chain clean (A→B→C, no noise)", "value": "chain_clean"},
+                        {"label": "Fork clean (B→A, B→C, no noise)", "value": "fork_clean"},
+                        {"label": "Collider clean (A→C←B, no noise)", "value": "collider_clean"},
+                        {"label": "Independent (A,B,C independent)", "value": "independent"},
+                    ],
+                    placeholder="Choose a sample dataset",
+                    style={"width": "50%"},
+                ),
+                html.Button("Load sample dataset", id="load-sample-btn", n_clicks=0, style={"marginLeft": "10px"}),
+            ],
+            style={"margin": "10px 0"},
         ),
         dcc.Store(id="data-store"),
         dcc.Store(id="dag-store", data=dag_model.dag_to_cytoscape_elements(dag_model.create_empty_dag())),
@@ -118,12 +202,14 @@ app.layout = html.Div(
             data=[],
             page_size=10,
             style_table={"overflowX": "auto"},
+            style_data_conditional=[],
         ),
-        html.Hr(),
-        html.Div(
-            [
-                html.Label("Select slice"),
-                dcc.Dropdown(id="slice-dropdown", options=[], value=None),
+        html.Div(id="ci-stats-cards", style={"display": "flex", "gap": "10px", "marginTop": "10px"}),
+    html.Hr(),
+    html.Div(
+        [
+            html.Label("Select slice"),
+            dcc.Dropdown(id="slice-dropdown", options=[], value=None),
             ],
             style={"width": "40%", "padding": "0 10px"},
         ),
@@ -134,6 +220,7 @@ app.layout = html.Div(
             ],
             style={"display": "flex", "flexWrap": "wrap", "gap": "20px", "alignItems": "flex-start"},
         ),
+        html.Div(id="ci-graphs-container", style={"display": "flex", "flexWrap": "wrap", "gap": "10px"}),
         html.H2("DAG Editor"),
         html.Div(
             [
@@ -188,23 +275,39 @@ app.layout = html.Div(
         html.H2("DAG vs Data"),
         html.Div(
             [
-                html.Label("Alpha"),
-                dcc.Slider(id="alpha-slider", min=0.001, max=0.2, step=0.001, value=0.05),
-                html.Label("Max independencies to test"),
+        html.Label("Alpha"),
+        html.Div(id="alpha-display", style={"marginLeft": "8px"}),
+        dcc.Slider(
+            id="alpha-slider",
+            min=0.001,
+            max=0.2,
+            step=0.001,
+            value=0.05,
+            marks={0.01: "0.01", 0.02: "0.02", 0.05: "0.05", 0.1: "0.10", 0.2: "0.20"},
+            tooltip={"placement": "bottom", "always_visible": True},
+            included=False,
+        ),
+        html.Div(
+            [
+                html.Label("Max independencies to test", style={"marginRight": "8px"}),
                 dcc.Input(
                     id="max-independencies",
                     type="number",
                     min=1,
                     max=500,
                     value=50,
-                    style={"width": "120px", "marginLeft": "10px"},
+                    style={"width": "120px", "marginRight": "12px"},
                 ),
+                html.Button("Compute DAG vs Data consistency", id="consistency-btn", n_clicks=0),
+            ],
+            style={"display": "flex", "alignItems": "center", "gap": "8px", "marginTop": "10px"},
+        ),
             ],
             style={"marginBottom": "10px"},
         ),
-        html.Button("Compute DAG vs Data consistency", id="consistency-btn", n_clicks=0),
-        dash_table.DataTable(
-            id="consistency-table",
+        html.Div(id="dag-vs-data-stats", style={"display": "flex", "gap": "10px", "marginBottom": "10px"}),
+dash_table.DataTable(
+    id="consistency-table",
             columns=[],
             data=[],
             page_size=10,
@@ -220,19 +323,34 @@ app.layout = html.Div(
     Output("data-store", "data"),
     Output("metadata-display", "children"),
     Input("upload-data", "contents"),
+    Input("load-sample-btn", "n_clicks"),
     State("upload-data", "filename"),
+    State("sample-dataset-dropdown", "value"),
     prevent_initial_call=True,
 )
-def handle_upload(contents, filename):
-    if contents is None:
+def handle_data_load(upload_contents, sample_clicks, filename, sample_value):
+    ctx = dash.callback_context
+    if not ctx.triggered:
         return (no_update,) * 2
-    df = parse_contents(contents, filename)
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    df = None
+    source = ""
+    if trigger_id == "upload-data" and upload_contents is not None:
+        df = parse_contents(upload_contents, filename)
+        source = f"upload:{filename}"
+    elif trigger_id == "load-sample-btn" and sample_value:
+        df = _generate_sample_df(sample_value)
+        source = f"sample:{sample_value}"
+
+    if df is None:
+        return (no_update,) * 2
+
     metadata = data_io.basic_metadata(df)
     logger.info(
-        "CSV uploaded - filename=%s rows=%s cols=%s column_names=%s categorical=%s",
-        filename,
-        df.shape[0],
-        df.shape[1],
+        "Data loaded from %s - shape=%s columns=%s categorical=%s",
+        source,
+        df.shape,
         list(df.columns),
         metadata["categorical_columns"],
     )
@@ -255,7 +373,7 @@ def update_dropdown_options(data_json, dag_data, x_value, y_value):
         return [], [], []
     df_cols: List[str] = []
     if data_json:
-        df = pd.read_json(data_json, orient="split")
+        df = pd.read_json(StringIO(data_json), orient="split")
         df_cols = data_io.get_categorical_columns(df)
     dag_nodes = _dag_nodes_from_elements(dag_data)
     option_values = sorted(set(df_cols) | set(dag_nodes))
@@ -272,6 +390,9 @@ def update_dropdown_options(data_json, dag_data, x_value, y_value):
     Output("summary-table", "columns"),
     Output("slice-dropdown", "options"),
     Output("slice-dropdown", "value"),
+    Output("summary-table", "style_data_conditional"),
+    Output("ci-stats-cards", "children"),
+    Output("ci-graphs-container", "children"),
     Input("run-tests", "n_clicks"),
     State("data-store", "data"),
     State("x-dropdown", "value"),
@@ -281,12 +402,12 @@ def update_dropdown_options(data_json, dag_data, x_value, y_value):
 )
 def run_ci_tests(n_clicks, data_json, x, y, z_values):
     if not data_json or not x or not y or x == y:
-        return [], [], [], None
-    df = pd.read_json(data_json, orient="split")
+        return [], [], [], None, [], [], []
+    df = pd.read_json(StringIO(data_json), orient="split")
     df_cols = set(df.columns)
     if x not in df_cols or y not in df_cols:
         logger.warning("CI skipped - x or y not in dataset columns x=%s y=%s", x, y)
-        return [], [], [], None
+        return [], [], [], None, [], [], []
     conds: List[str] = z_values or []
     valid_conds = [c for c in conds if c in df_cols]
     dropped = set(conds) - set(valid_conds)
@@ -307,7 +428,61 @@ def run_ci_tests(n_clicks, data_json, x, y, z_values):
         {"label": f"{idx}: {row['condition']}", "value": idx} for idx, row in summary_df.iterrows()
     ]
     slice_value = slice_options[0]["value"] if slice_options else None
-    return data_records, columns, slice_options, slice_value
+    # Style rows based on p-value for quick interpretation.
+    style_data_conditional = [
+        {"if": {"filter_query": "{p} < 0.001"}, "backgroundColor": "#ffebee"},
+        {"if": {"filter_query": "{p} >= 0.001 && {p} < 0.01"}, "backgroundColor": "#ffe0b2"},
+        {"if": {"filter_query": "{p} >= 0.01 && {p} < 0.05"}, "backgroundColor": "#fff3e0"},
+        {"if": {"filter_query": "{p} >= 0.05"}, "backgroundColor": "#e8f5e9"},
+    ]
+    # Verdiction column
+    for row in data_records:
+        pval = row.get("p", 1)
+        if pval < 0.001:
+            row["verdict"] = "Strong dependence"
+        elif pval < 0.01:
+            row["verdict"] = "Dependence"
+        elif pval < 0.05:
+            row["verdict"] = "Weak dependence"
+        else:
+            row["verdict"] = "Looks independent"
+    display_cols = [
+        col
+        for col in summary_df.columns
+        if col not in {"contingency_counts", "contingency_probs", "x_levels", "y_levels"}
+    ]
+    columns = [{"name": col, "id": col} for col in display_cols] + [{"name": "verdict", "id": "verdict"}]
+
+    # Build stats cards
+    cards = []
+    if not summary_df.empty:
+        row0 = summary_df.iloc[0]
+        cards = [
+            html.Div([html.Strong("chi2"), html.Div(f"{row0['chi2']:.3f}")], style={"padding": "8px", "border": "1px solid #eee"}),
+            html.Div([html.Strong("p-value"), html.Div(f"{row0['p']:.3f}")], style={"padding": "8px", "border": "1px solid #eee"}),
+            html.Div([html.Strong("Cramér's V"), html.Div(f"{row0['cramers_v']:.3f}")], style={"padding": "8px", "border": "1px solid #eee"}),
+            html.Div([html.Strong("n"), html.Div(str(int(row0["n"])))], style={"padding": "8px", "border": "1px solid #eee"}),
+            html.Div([html.Strong("dof"), html.Div(str(int(row0["dof"])))], style={"padding": "8px", "border": "1px solid #eee"}),
+            html.Div([html.Strong("Verdict"), html.Div(data_records[0].get("verdict"))], style={"padding": "8px", "border": "1px solid #eee"}),
+        ]
+
+    # Build per-slice normalized heatmaps
+    graphs = []
+    for idx, row in summary_df.iterrows():
+        probs = row.get("contingency_probs", [])
+        x_levels = row.get("x_levels", [])
+        y_levels = row.get("y_levels", [])
+        if probs and x_levels and y_levels:
+            table = pd.DataFrame(probs, index=x_levels, columns=y_levels)
+            fig, ax = plt.subplots(figsize=(4, 3))
+            sns.heatmap(table, annot=True, fmt=".2f", cmap="Blues", cbar=False, ax=ax)
+            ax.set_title(f"Slice: {row['condition']}")
+            ax.set_xlabel(y)
+            ax.set_ylabel(x)
+            fig.tight_layout()
+            graphs.append(html.Img(src=fig_to_base64(fig), style={"width": "320px"}))
+
+    return data_records, columns, slice_options, slice_value, style_data_conditional, cards, graphs
 
 
 def _get_slice(df: pd.DataFrame, conds: List[str], slice_index: int | None) -> pd.DataFrame:
@@ -331,7 +506,7 @@ def _get_slice(df: pd.DataFrame, conds: List[str], slice_index: int | None) -> p
 def update_slice_plot(slice_index, summary_data, data_json, x, y, z_values):
     if not data_json or not x or not y:
         return None
-    df = pd.read_json(data_json, orient="split")
+    df = pd.read_json(StringIO(data_json), orient="split")
     conds: List[str] = z_values or []
     sub_df = _get_slice(df, conds, slice_index)
     fig = plotting.plot_slice_countplot(sub_df, x, y)
@@ -345,7 +520,7 @@ def update_slice_plot(slice_index, summary_data, data_json, x, y, z_values):
 def update_dag(data_json):
     dag = dag_model.create_empty_dag()
     if data_json:
-        df = pd.read_json(data_json, orient="split")
+        df = pd.read_json(StringIO(data_json), orient="split")
         for col in df.columns:
             dag_model.add_node(dag, col)
         # Simple chain placeholder to make a visible structure.
@@ -430,7 +605,7 @@ def update_dag_store(
         if dag_current.number_of_nodes() > 0 or dag_current.number_of_edges() > 0:
             logger.info("CSV uploaded but DAG already edited; keeping existing DAG")
             return no_update
-        df = pd.read_json(data_json, orient="split")
+        df = pd.read_json(StringIO(data_json), orient="split")
         dag = dag_model.dag_from_columns(list(df.columns))
         logger.info("Auto-populated DAG from CSV columns: %s", list(df.columns))
         return dag_model.dag_to_cytoscape_elements(dag)
@@ -491,6 +666,7 @@ def load_settings_from_upload(upload_contents, cur_alpha, cur_max):
     Output("consistency-table", "data"),
     Output("consistency-table", "columns"),
     Output("consistency-table", "style_data_conditional"),
+    Output("dag-vs-data-stats", "children"),
     Input("consistency-btn", "n_clicks"),
     State("data-store", "data"),
     State("dag-store", "data"),
@@ -501,23 +677,23 @@ def load_settings_from_upload(upload_contents, cur_alpha, cur_max):
 def compute_dag_vs_data(n_clicks, data_json, dag_data, alpha_value, max_independencies):
     if not data_json or dag_data is None:
         logger.warning("DAG vs Data skipped - missing data or DAG")
-        return [], [], []
-    df = pd.read_json(data_json, orient="split")
+        return [], [], [], []
+    df = pd.read_json(StringIO(data_json), orient="split")
     dag = dag_model.cytoscape_elements_to_dag(dag_data)
     valid_nodes = [n for n in dag.nodes if n in df.columns]
     if not valid_nodes:
         logger.warning("DAG vs Data skipped - no DAG nodes overlap dataset columns")
-        return [], [], []
+        return [], [], [], []
     implied_all = dag_model.implied_independencies(dag, nodes=valid_nodes, max_conditions=1)
     if not implied_all:
         logger.info("DAG vs Data found no implied independencies to test")
-        return [], [], []
+        return [], [], [], []
     max_independencies = max_independencies or len(implied_all)
     implied = implied_all[: int(max_independencies)]
     alpha = alpha_value if alpha_value is not None else 0.05
     test_df = ci_engine.test_independencies(df, implied, alpha=alpha)
     if test_df.empty:
-        return [], [], []
+        return [], [], [], []
     test_df["graph_says"] = "independent"
     test_df["agreement"] = test_df["p_value"].apply(lambda p: "yes" if p >= alpha else "no")
     agreements = (test_df["agreement"] == "yes").sum()
@@ -533,9 +709,16 @@ def compute_dag_vs_data(n_clicks, data_json, dag_data, alpha_value, max_independ
     )
     columns = [{"name": col, "id": col} for col in test_df.columns]
     style_data_conditional = [
-        {"if": {"filter_query": "{agreement} = 'no'"}, "backgroundColor": "#ffebee"}
+        {"if": {"filter_query": "{agreement} = 'no'"}, "backgroundColor": "#ffebee"},
+        {"if": {"filter_query": "{agreement} = 'yes'"}, "backgroundColor": "#e8f5e9"},
     ]
-    return test_df.to_dict("records"), columns, style_data_conditional
+    stats_cards = [
+        html.Div([html.Strong("Independencies tested"), html.Div(str(len(test_df)))], style={"padding": "8px", "border": "1px solid #eee"}),
+        html.Div([html.Strong("Agreements"), html.Div(str(int(agreements)))], style={"padding": "8px", "border": "1px solid #eee"}),
+        html.Div([html.Strong("Disagreements"), html.Div(str(int(disagreements)))], style={"padding": "8px", "border": "1px solid #eee"}),
+        html.Div([html.Strong("Agreement rate"), html.Div(f"{(agreements/len(test_df)) if len(test_df) else 0:.2f}")], style={"padding": "8px", "border": "1px solid #eee"}),
+    ]
+    return test_df.to_dict("records"), columns, style_data_conditional, stats_cards
 
 
 @callback(
@@ -562,6 +745,16 @@ def highlight_dag_selection(selected_rows, table_data):
     for z in conds:
         highlight_nodes.append({"selector": f'[id = "{z}"]', "style": {"background-color": "#81c784"}})
     return stylesheet + highlight_nodes
+
+
+@callback(
+    Output("alpha-display", "children"),
+    Input("alpha-slider", "value"),
+)
+def show_alpha(alpha):
+    if alpha is None:
+        return ""
+    return f"{alpha:.3f}"
 
 
 @callback(
@@ -637,7 +830,7 @@ def sync_ci_values(
         if len(selected_ids) != 2:
             logger.warning("DAG→CI X/Y mapping requires exactly 2 nodes, got %s", len(selected_ids))
             return no_update, no_update, cur_z
-        df = pd.read_json(data_json_state, orient="split")
+        df = pd.read_json(StringIO(data_json_state), orient="split")
         df_cols = set(df.columns)
         valid = [n for n in selected_ids if n in df_cols]
         if len(valid) != 2:
@@ -651,7 +844,7 @@ def sync_ci_values(
             logger.warning("DAG→CI Z mapping skipped - no data available")
             return no_update, no_update, cur_z
         selected_ids = [n.get("id") for n in (selected_nodes or []) if n.get("id")]
-        df = pd.read_json(data_json_state, orient="split")
+        df = pd.read_json(StringIO(data_json_state), orient="split")
         df_cols = set(df.columns)
         valid = [n for n in selected_ids if n in df_cols]
         dropped = set(selected_ids) - set(valid)
@@ -668,7 +861,7 @@ def sync_ci_values(
         x_val = row.get("x")
         y_val = row.get("y")
         conds = row.get("conds") or []
-        df = pd.read_json(data_json_state, orient="split") if data_json_state else None
+        df = pd.read_json(StringIO(data_json_state), orient="split") if data_json_state else None
         df_cols = set(df.columns) if df is not None else set()
         valid_x = x_val if x_val in df_cols else None
         valid_y = y_val if y_val in df_cols else None
