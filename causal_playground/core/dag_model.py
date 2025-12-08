@@ -134,7 +134,7 @@ def is_d_separated(dag: nx.DiGraph, x: str, y: str, conds: list[str]) -> bool:
     """Return True if x and y are d-separated given conds in this DAG."""
     pg_dag = _to_pgmpy_dag(dag)
     separated = not pg_dag.is_dconnected(x, y, observed=conds or None)
-    logger.info("D-separation check - x=%s y=%s conds=%s separated=%s", x, y, conds, separated)
+    logger.debug("D-separation check - x=%s y=%s conds=%s separated=%s", x, y, conds, separated)
     return separated
 
 

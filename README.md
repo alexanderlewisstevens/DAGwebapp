@@ -6,6 +6,7 @@ An interactive Dash web app for exploring conditional independence and simple ca
 - Upload a CSV or use the built-in sample dataset loader.
 - Auto-detect categorical variables.
 - Chi-square CI tests with Cramér's V and slice-level summaries.
+- Slice-by-slice residual heatmaps (deviation from independence baseline) with per-slice p/V badges and binary contrasts when applicable.
 - Interactive DAG editor (dash-cytoscape): add/remove nodes and edges.
 - DAG → CI mapping: select nodes in the DAG and push them into X/Y/Z.
 - DAG vs Data panel: compare graph-implied independencies (d-separation) with empirical CI tests.
@@ -79,3 +80,30 @@ DEV_LOG.md
 ## Notes
 - Core modules are importable outside Dash; plotting returns Matplotlib figures for reuse.
 - Logging config: `core/logging_config.py`; log output: `logs/app.log`.
+
+## Backlog / Roadmap (high-value next steps)
+
+- Layout & UX
+  - Adopt a card/grid layout: Data & CI (full), CI plots (wide) + DAG context (narrow), DAG editor (wide), DAG vs Data (narrow).
+  - Keep a consistent shell (header with help link), modern font, accent color, and better spacing/spacing hierarchy; ensure responsive behavior (tabs on small screens).
+- DAG interaction
+  - Refine role clicks: cycle node roles none → X → Y → Z → none; default X/Y to first categorical columns.
+  - Lock zoom/pan annoyances; status text for edge add; add legend for X/Y/Z colors; highlight current CI path in the mini DAG.
+- CI panel polish
+  - Stronger stat cards (χ², p, V, n, dof, verdict with color).
+  - Tabs/toggles for counts/probabilities/residuals; “last run” indicator/spinner; clear warnings for empty/large-Z slices.
+- DAG vs Data fit
+  - Scorecard: total implied independencies, tested, agreements/disagreements, agreement rate + fit label; make α rule explicit.
+  - Edge-only mode clarified (local parent→child support with other parents conditioned); rows set X/Y/Z and scroll CI into view.
+- Edge support styling
+  - Normalize edge colors/weights across main DAG and context: strong/weak/unsupported with legend and thresholds.
+- Data EDA & relationships
+  - Add a “Data overview” card (rows, columns, categorical summary, missingness warnings).
+  - Optional relationships tab: Cramér’s V matrix clickable to set X/Y.
+- Causal query focus (later)
+  - For chosen X→Y: back-door identifiability, candidate adjustment sets, one-click apply, and a small “query scorecard.”
+- Advanced/latent nodes (later)
+  - Optional latent node mode (no backing column, dashed outline), excluded from CI but used for d-separation/adjustment logic.
+- Logging/stability
+  - Reduce log noise (frequent DAG init/convert to DEBUG); keep one INFO line per DAG-vs-Data run.
+  - Avoid redundant DAG initializations; keep a single authoritative DAG store.

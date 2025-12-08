@@ -54,3 +54,20 @@
 [2025-12-03 17:20] Additional sample datasets
 - Added more sample options (chain clean, fork clean, collider clean, independent) to the in-app loader and bundled CSVs under `sample_data/`.
 - Sample generator covers these scenarios for quick demos (including noise-free cases).
+[2025-12-03 17:35] DAG/CI UX polish and edge add mode
+- CI panel: verdict column with color-coding, stats cards (χ², p, Cramér's V, n, dof), and per-slice normalized heatmaps from contingency probabilities.
+- DAG styling: bezier edges with triangle arrowheads; edges styled by data support at current α; X/Y/Z roles highlighted.
+- DAG vs Data: summary cards (tested, agreements, disagreements, rate) and clearer alpha slider with sparse marks/live value; table coloring.
+- Added Select vs Add edge modes; in Add mode, clicking source then target adds an edge with cycle/duplicate checks and status messaging.
+- Wrapped pd.read_json calls with StringIO to silence FutureWarnings; README/sample data in sync; tests remain green.
+[2025-12-03 17:50] CI slice residual heatmaps
+- CI slice plots now show residuals (p_ij - expected) on a diverging scale with consistent range across slices; annotations still display probabilities.
+- Added per-slice badges (p, V, verdict) and binary contrast Δ for 2x2 cases when possible to make independence/dependence visually obvious.
+[2025-12-03 18:10] Noise trim, stricter alpha, edge-only consistency
+- Turned verbose d-separation/CI slice logs down to DEBUG to de-noise app.log.
+- Raised the default alpha to 0.01 (higher bar for agreement) and added an edge-only consistency toggle plus fit badge in DAG vs Data.
+- Added CI DAG context mini-view highlighting the current X/Y/Z on the graph; kept DAG vs Data computation manual (button-driven) to avoid recomputing on every edge edit.
+[2025-12-03 18:40] UI shell & layout refresh
+- Introduced a product-style shell: header with logo/tagline/help link, dark theme, gradient buttons, and card/grid layout for Data & CI, CI plots + DAG context, DAG editor, and DAG vs Data.
+- Styled controls and cards consistently; centered content with max width; added inline help blurb under Data & CI; kept existing functionality and IDs intact.
+- Added a backlog/roadmap section to README for future UX/feature work.

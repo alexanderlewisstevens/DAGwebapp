@@ -71,7 +71,7 @@ def conditional_ci_summary(
         group_items = [("All", df)]
         group_count = 1
 
-    logger.info(
+    logger.debug(
         "Running conditional CI summary - x=%s y=%s conds=%s groups=%s",
         x,
         y,
