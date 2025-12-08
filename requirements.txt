@@ -6,3 +6,4 @@ scipy>=1.10
 seaborn>=0.12
 matplotlib>=3.7
 networkx>=3.0
+gunicorn>=21.0

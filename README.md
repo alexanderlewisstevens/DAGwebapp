@@ -64,6 +64,12 @@ pytest
 ```
 Includes unit tests for CI/DAG/d-separation, DAG vs Data helpers, and a smoke workflow test.
 
+## Deploy to Render
+- Repo already includes `Procfile` and `render.yaml`; push to GitHub and create a Render Web Service (blueprint will auto-detect).
+- Render env: Python, `PYTHON_VERSION=3.12`; build command `pip install -r requirements.txt`; start command `gunicorn causal_playground.app_dash.app:server --workers 2 --threads 4 --timeout 120`.
+- Dash binds to `$PORT` via the exported `server` object, so no extra config is needed.
+- Render disks are ephemeral; `logs/app.log` will not persist between deploys.
+
 ## Project layout
 ```
 causal_playground/
