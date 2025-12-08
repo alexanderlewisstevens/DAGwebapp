@@ -18,6 +18,7 @@ import dash_cytoscape as cyto
 import networkx as nx
 import plotly.express as px
 import plotly.graph_objects as go
+from scipy.stats import chi2_contingency
 
 from causal_playground.core import ci_engine, data_io, dag_model
 from causal_playground.core.logging_config import setup_logging
@@ -166,223 +167,223 @@ app.layout = html.Div(
     className="cp-root",
     children=[
         dcc.Store(id="ci-roles", data={"x": None, "y": None, "z": []}),
-                        html.Header(
-                            className="cp-header",
-                            children=[
-                                html.Div("Causal Playground", className="cp-logo"),
-                                html.Div("Causal DAG EDA", className="cp-tagline"),
-                html.Div(
-                    className="cp-header-actions",
+        html.Div(
+            className="cp-shell",
+            children=[
+                html.Aside(
+                    className="cp-sidebar",
                     children=[
-                        html.A("What is this?", id="help-toggle", n_clicks=0, className="cp-link", href="#"),
-                        dcc.Dropdown(
-                            id="theme-toggle",
-                            options=[{"label": "Light", "value": "light"}, {"label": "Dark", "value": "dark"}],
-                            value="dark",
-                            clearable=False,
-                            className="cp-theme-toggle",
+                        html.Div("Causal Playground", className="sidebar-title"),
+                        html.Div("Quick links", className="sidebar-subtitle"),
+                        html.Ul(
+                            [
+                                html.Li(html.A("Data & CI", href="#section-data-ci", className="cp-link")),
+                                html.Li(html.A("DAG editor", href="#section-dag", className="cp-link")),
+                                html.Li(html.A("DAG vs Data", href="#section-dag-fit", className="cp-link")),
+                                html.Li(html.Button("Toggle help", id="help-toggle", n_clicks=0, className="secondary-btn sidebar-help-btn")),
+                            ],
+                            className="sidebar-nav",
                         ),
                     ],
                 ),
-            ],
-        ),
-        html.Div(
-            id="help-panel",
-            children=html.Div(
-                dcc.Markdown(
-                    """
-**What this app does:** It lets you draw a causal DAG, test its implied independencies against the data, and run conditional independence (CI) tests for chosen X/Y/Z.
+                html.Main(
+                    className="cp-main",
+                    children=[
+                        html.H1("Causal Playground", className="page-title"),
+                        dcc.Store(id="data-store"),
+                        dcc.Store(id="dag-store", data=dag_model.dag_to_cytoscape_elements(dag_model.create_empty_dag())),
+                        dcc.Store(id="edge-source", data=None),
+                        html.Div(
+                            id="help-panel",
+                            className="cp-card",
+                            children=dcc.Markdown(
+                                """
+**What this app does:** Draw a causal DAG, test implied independencies against the data, and run conditional independence (CI) tests for chosen X/Y/Z.
 
 **Typical loop:** load data → auto-nodes appear → add edges → pick X/Y/Z (or click nodes) → run CI → check DAG vs Data to see which independencies the graph gets wrong.
 """
-                ),
-                className="cp-card",
-            ),
-            style={"display": "none"},
-        ),
-        html.Main(
-            className="cp-main",
-            children=[
-                dcc.Store(id="data-store"),
-                dcc.Store(id="dag-store", data=dag_model.dag_to_cytoscape_elements(dag_model.create_empty_dag())),
-                dcc.Store(id="edge-source", data=None),
-                html.Div(
-                    className="cp-grid",
-                    children=[
-                        html.Div(
-                            className="cp-card cp-card--full",
-                            children=[
-                                html.H3("Data & CI"),
-                                html.Div(
-                                    className="cp-inline-help",
-                                    children=[
-                                        html.Span(
-                                            "Propose a DAG, test implied independencies, and refine it for your causal query."
-                                        ),
-                                        html.A("See full workflow →", href="#", className="cp-link"),
-                                    ],
-                                ),
-                                dcc.Upload(
-                                    id="upload-data",
-                                    children=html.Div(["Drag and drop or ", html.A("select a CSV file")]),
-                                    className="upload-box",
-                                    multiple=False,
-                                ),
-                                html.Div(
-                                    [
-                                        html.Label("Try a sample dataset"),
-                                        html.Div(
-                                            [
-                                                html.Button("Starter 5 vars", id="sample-btn-starter", n_clicks=0, className="secondary-btn"),
-                                                html.Button("Chain", id="sample-btn-chain", n_clicks=0, className="secondary-btn"),
-                                                html.Button("Fork", id="sample-btn-fork", n_clicks=0, className="secondary-btn"),
-                                                html.Button("Collider", id="sample-btn-collider", n_clicks=0, className="secondary-btn"),
-                                                html.Button("Independent", id="sample-btn-independent", n_clicks=0, className="secondary-btn"),
-                                            ],
-                                            className="button-row",
-                                        ),
-                                    ],
-                                    className="row",
-                                ),
-                                html.Div(id="metadata-display", className="meta-text"),
-                                html.Div(id="column-buttons", className="pill-row"),
-                                html.Div(id="role-display", className="meta-text"),
-                                html.Button("Run CI tests", id="run-tests", n_clicks=0, className="primary-btn"),
-                                html.Div(id="summary-container"),
-                                dash_table.DataTable(
-                                    id="summary-table",
-                                    columns=[],
-                                    data=[],
-                                    page_size=10,
-                                    style_table={"overflowX": "auto"},
-                                    style_data_conditional=[],
-                                ),
-                                html.Div(id="ci-stats-cards", className="card-row"),
-                            ],
+                            ),
+                            style={"display": "none"},
                         ),
                         html.Div(
-                            className="cp-card cp-card--wide",
+                            className="cp-two-panel",
                             children=[
-                                html.H3("Current CI slice"),
                                 html.Div(
-                                    [
-                                        html.Label("Select slice"),
-                                        dcc.Dropdown(id="slice-dropdown", options=[], value=None, className="cp-dropdown"),
-                                        dcc.Graph(id="plot-graph", className="plot-img"),
-                                        html.Div(id="ci-graphs-container", className="plot-grid"),
-                                    ]
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            className="cp-card cp-card--wide",
-                            children=[
-                                html.H3("DAG editor"),
-                                html.Div(
-                                    className="row",
+                                    className="cp-stack",
                                     children=[
                                         html.Div(
-                                            [
-                                                html.Label("Mode"),
-                                                dcc.RadioItems(
-                                                    id="dag-mode",
-                                                    options=[
-                                                        {"label": "Select", "value": "select"},
-                                                        {"label": "Add edges", "value": "add"},
-                                                    ],
-                                                    value="select",
-                                                    inline=True,
+                                            id="section-data-ci",
+                                            className="cp-card",
+                                            children=[
+                                                html.H3("Data & CI"),
+                                                dcc.Upload(
+                                                    id="upload-data",
+                                                    children=html.Div(["Drag and drop or ", html.A("select a CSV file")]),
+                                                    className="upload-box",
+                                                    multiple=False,
                                                 ),
-                                                html.Div(id="dag-status-message", className="meta-text"),
-                                                html.Button("Remove selected", id="dag-remove-selected", n_clicks=0, className="secondary-btn"),
                                                 html.Div(
                                                     [
-                                                    html.Button("Use selected as X/Y", id="dag-use-xy", n_clicks=0, className="secondary-btn"),
-                                                    html.Button("Use selected as Z", id="dag-use-z", n_clicks=0, className="secondary-btn"),
+                                                        html.Label("Try a sample dataset"),
+                                                        html.Div(
+                                                            [
+                                                                html.Button("Starter 5 vars", id="sample-btn-starter", n_clicks=0, className="secondary-btn"),
+                                                                html.Button("Chain", id="sample-btn-chain", n_clicks=0, className="secondary-btn"),
+                                                                html.Button("Fork", id="sample-btn-fork", n_clicks=0, className="secondary-btn"),
+                                                                html.Button("Collider", id="sample-btn-collider", n_clicks=0, className="secondary-btn"),
+                                                                html.Button("Independent", id="sample-btn-independent", n_clicks=0, className="secondary-btn"),
+                                                            ],
+                                                            className="button-row",
+                                                        ),
                                                     ],
                                                     className="row",
                                                 ),
+                                                html.Div(id="metadata-display", className="meta-text"),
+                                                html.Div(id="column-buttons", className="pill-row"),
+                                                html.Div(id="role-display", className="meta-text"),
+                                                html.Button("Run CI tests", id="run-tests", n_clicks=0, className="primary-btn"),
+                                                dash_table.DataTable(
+                                                    id="summary-table",
+                                                    columns=[],
+                                                    data=[],
+                                                    page_size=10,
+                                                    style_table={"overflowX": "auto"},
+                                                    style_data_conditional=[],
+                                                ),
+                                                html.Div(id="ci-stats-cards", className="card-row"),
                                             ],
-                                            className="col",
-                                        ),
-                                    ],
-                                ),
-                                cyto.Cytoscape(
-                                    id="dag-cytoscape",
-                                    layout={"name": "cose"},
-                                    style={"width": "100%", "height": "420px", "border": "1px solid #1f2937"},
-                                    elements=[],
-                                    stylesheet=_base_stylesheet(),
-                                    userZoomingEnabled=False,
-                                    userPanningEnabled=False,
-                                    autoungrabify=True,
-                                ),
-                                html.Div(
-                                    [
-                                        html.Button("Download DAG/settings", id="download-dag-settings-btn", n_clicks=0, className="secondary-btn"),
-                                        dcc.Download(id="download-dag-settings"),
-                                        dcc.Upload(
-                                            id="upload-dag-settings",
-                                            children=html.Button("Upload DAG/settings", className="secondary-btn"),
-                                            multiple=False,
-                                        ),
-                                    ],
-                                    className="row",
-                                    style={"marginTop": "10px"},
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            className="cp-card cp-card--narrow",
-                            children=[
-                                html.H3("DAG vs data fit"),
-                                html.Div(
-                                    [
-                                        html.Label("Alpha"),
-                                        html.Div(id="alpha-display", className="meta-text"),
-                                        dcc.Slider(
-                                            id="alpha-slider",
-                                            min=0.001,
-                                            max=0.2,
-                                            step=0.001,
-                                            value=0.01,
-                                            marks={0.001: "0.001", 0.005: "0.005", 0.01: "0.01", 0.02: "0.02", 0.05: "0.05", 0.1: "0.10", 0.2: "0.20"},
-                                            tooltip={"placement": "bottom", "always_visible": True},
-                                            included=False,
                                         ),
                                         html.Div(
-                                            [
-                                                html.Label("Max independencies to test", style={"marginRight": "8px"}),
-                                                dcc.Input(
-                                                    id="max-independencies",
-                                                    type="number",
-                                                    min=1,
-                                                    max=500,
-                                                    value=50,
-                                                    style={"width": "120px", "marginRight": "12px"},
+                                            id="section-dag",
+                                            className="cp-card",
+                                            children=[
+                                                html.H3("DAG editor"),
+                                                html.Div(
+                                                    className="row",
+                                                    children=[
+                                                        html.Div(
+                                                            [
+                                                                html.Label("Mode"),
+                                                                dcc.RadioItems(
+                                                                    id="dag-mode",
+                                                                    options=[
+                                                                        {"label": "Select", "value": "select"},
+                                                                        {"label": "Add edges", "value": "add"},
+                                                                    ],
+                                                                    value="select",
+                                                                    inline=True,
+                                                                ),
+                                                                html.Div(id="dag-status-message", className="meta-text"),
+                                                                html.Button("Remove selected", id="dag-remove-selected", n_clicks=0, className="secondary-btn"),
+                                                                html.Div(
+                                                                    [
+                                                                        html.Button("Use selected as X/Y", id="dag-use-xy", n_clicks=0, className="secondary-btn"),
+                                                                        html.Button("Use selected as Z", id="dag-use-z", n_clicks=0, className="secondary-btn"),
+                                                                    ],
+                                                                    className="row",
+                                                                ),
+                                                            ],
+                                                            className="col",
+                                                        ),
+                                                    ],
                                                 ),
-                                                dcc.Checklist(
-                                                    id="edge-only-consistency",
-                                                    options=[{"label": "Edge-only mode", "value": "edge_only"}],
-                                                    value=[],
-                                                    style={"marginRight": "12px"},
+                                                cyto.Cytoscape(
+                                                    id="dag-cytoscape",
+                                                    layout={"name": "cose"},
+                                                    style={"width": "100%", "height": "420px", "border": "1px solid #1f2937"},
+                                                    elements=[],
+                                                    stylesheet=_base_stylesheet(),
+                                                    userZoomingEnabled=False,
+                                                    userPanningEnabled=False,
+                                                    autoungrabify=True,
                                                 ),
-                                                html.Button("Check DAG vs data", id="consistency-btn", n_clicks=0, className="primary-btn"),
+                                                html.Div(
+                                                    [
+                                                        html.Button("Download DAG/settings", id="download-dag-settings-btn", n_clicks=0, className="secondary-btn"),
+                                                        dcc.Download(id="download-dag-settings"),
+                                                        dcc.Upload(
+                                                            id="upload-dag-settings",
+                                                            children=html.Button("Upload DAG/settings", className="secondary-btn"),
+                                                            multiple=False,
+                                                        ),
+                                                    ],
+                                                    className="row",
+                                                    style={"marginTop": "10px"},
+                                                ),
                                             ],
-                                            className="row",
                                         ),
-                                        html.Div(id="independencies-summary", className="meta-text", style={"marginTop": "6px"}),
                                     ],
                                 ),
-                                html.Div(id="dag-vs-data-stats", className="card-row"),
-                                dash_table.DataTable(
-                                    id="consistency-table",
-                                    columns=[],
-                                    data=[],
-                                    page_size=10,
-                                    row_selectable="single",
-                                    style_data_conditional=[],
-                                    style_table={"overflowX": "auto", "marginTop": "10px"},
+                                html.Div(
+                                    className="cp-stack",
+                                    children=[
+                                        html.Div(
+                                            id="section-ci",
+                                            className="cp-card",
+                                            children=[
+                                                html.H3("Current CI slice"),
+                                                html.Label("Select slice"),
+                                                dcc.Dropdown(id="slice-dropdown", options=[], value=None, className="cp-dropdown"),
+                                                dcc.Graph(id="plot-graph", className="plot-img"),
+                                                html.Div(id="ci-graphs-container", className="plot-grid"),
+                                            ],
+                                        ),
+                                        html.Div(
+                                            id="section-dag-fit",
+                                            className="cp-card",
+                                            children=[
+                                                html.H3("DAG vs data fit"),
+                                                html.Div(
+                                                    [
+                                                        html.Label("Alpha"),
+                                                        html.Div(id="alpha-display", className="meta-text"),
+                                                        dcc.Slider(
+                                                            id="alpha-slider",
+                                                            min=0.001,
+                                                            max=0.2,
+                                                            step=0.001,
+                                                            value=0.01,
+                                                            marks={0.001: "0.001", 0.005: "0.005", 0.01: "0.01", 0.02: "0.02", 0.05: "0.05", 0.1: "0.10", 0.2: "0.20"},
+                                                            tooltip={"placement": "bottom", "always_visible": True},
+                                                            included=False,
+                                                        ),
+                                                        html.Div(
+                                                            [
+                                                                html.Label("Max independencies to test", style={"marginRight": "8px"}),
+                                                                dcc.Input(
+                                                                    id="max-independencies",
+                                                                    type="number",
+                                                                    min=1,
+                                                                    max=500,
+                                                                    value=50,
+                                                                    style={"width": "120px", "marginRight": "12px"},
+                                                                ),
+                                                                dcc.Checklist(
+                                                                    id="edge-only-consistency",
+                                                                    options=[{"label": "Edge-only mode", "value": "edge_only"}],
+                                                                    value=[],
+                                                                    style={"marginRight": "12px"},
+                                                                ),
+                                                                html.Button("Check DAG vs data", id="consistency-btn", n_clicks=0, className="primary-btn"),
+                                                            ],
+                                                            className="row",
+                                                        ),
+                                                        html.Div(id="independencies-summary", className="meta-text", style={"marginTop": "6px"}),
+                                                    ],
+                                                ),
+                                                html.Div(id="dag-vs-data-stats", className="card-row"),
+                                                dash_table.DataTable(
+                                                    id="consistency-table",
+                                                    columns=[],
+                                                    data=[],
+                                                    page_size=10,
+                                                    row_selectable="single",
+                                                    style_data_conditional=[],
+                                                    style_table={"overflowX": "auto", "marginTop": "10px"},
+                                                ),
+                                            ],
+                                        ),
+                                    ],
                                 ),
                             ],
                         ),
