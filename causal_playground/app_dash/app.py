@@ -166,11 +166,11 @@ app.layout = html.Div(
     className="cp-root",
     children=[
         dcc.Store(id="ci-roles", data={"x": None, "y": None, "z": []}),
-        html.Header(
-            className="cp-header",
-            children=[
-                html.Div("Causal Playground", className="cp-logo"),
-                html.Div("Causal DAG EDA", className="cp-tagline"),
+                        html.Header(
+                            className="cp-header",
+                            children=[
+                                html.Div("Causal Playground", className="cp-logo"),
+                                html.Div("Causal DAG EDA", className="cp-tagline"),
                 html.Div(
                     className="cp-header-actions",
                     children=[
@@ -267,7 +267,7 @@ app.layout = html.Div(
                                 html.Div(
                                     [
                                         html.Label("Select slice"),
-                                        dcc.Dropdown(id="slice-dropdown", options=[], value=None),
+                                        dcc.Dropdown(id="slice-dropdown", options=[], value=None, className="cp-dropdown"),
                                         dcc.Graph(id="plot-graph", className="plot-img"),
                                         html.Div(id="ci-graphs-container", className="plot-grid"),
                                     ]

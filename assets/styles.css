@@ -131,6 +131,11 @@ body {
   margin: 8px 0 4px;
 }
 
+.cp-dropdown {
+  width: 260px;
+  max-width: 100%;
+}
+
 .pill-btn {
   border-radius: 999px;
   border: 1px solid #334155;
