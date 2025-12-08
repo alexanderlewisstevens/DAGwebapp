@@ -7522,3 +7522,85 @@
 2025-12-08 15:12:05,375 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
 2025-12-08 15:12:07,269 - causal_playground - INFO - create_empty_dag - Created empty DAG
 2025-12-08 15:12:07,270 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-08 15:22:25,567 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:25,567 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-08 15:22:27,350 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:27,350 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=0 edges=0
+2025-12-08 15:22:32,841 - causal_playground - INFO - _generate_sample_df - Loaded sample dataset 'starter_5vars' shape=(500, 5)
+2025-12-08 15:22:32,843 - causal_playground - INFO - get_categorical_columns - Inferred categorical columns (<=20 levels): ['A', 'B', 'C', 'D', 'E']
+2025-12-08 15:22:32,843 - causal_playground - INFO - handle_data_load - Data loaded from sample:starter_5vars - shape=(500, 5) columns=['A', 'B', 'C', 'D', 'E'] categorical=['A', 'B', 'C', 'D', 'E']
+2025-12-08 15:22:32,850 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:32,851 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=0 edges=0
+2025-12-08 15:22:32,858 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:32,858 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:32,859 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:32,861 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:32,863 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:32,863 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:32,864 - causal_playground - INFO - dag_from_columns - Initialized DAG from columns: nodes=5 edges=0
+2025-12-08 15:22:32,866 - causal_playground - INFO - update_dag_store - Auto-populated DAG from CSV columns: ['A', 'B', 'C', 'D', 'E']
+2025-12-08 15:22:32,866 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:34,533 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:34,535 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:34,536 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:34,536 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:34,536 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:34,536 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:34,536 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:34,536 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:35,221 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:35,221 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:35,221 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:35,221 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:35,222 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:35,224 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:35,225 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:35,225 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:35,235 - causal_playground - INFO - run_ci_tests - CI request received - x=E y=A conds=[]
+2025-12-08 15:22:35,245 - causal_playground - INFO - run_ci_tests - CI computed - x=E y=A conds=[] slices=1
+2025-12-08 15:22:37,782 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:37,786 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:37,786 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:37,786 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:37,786 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:37,786 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:37,786 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:37,786 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:37,795 - causal_playground - INFO - run_ci_tests - CI request received - x=A y=E conds=[]
+2025-12-08 15:22:37,797 - causal_playground - INFO - run_ci_tests - CI computed - x=A y=E conds=[] slices=1
+2025-12-08 15:22:38,899 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:38,899 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:38,899 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:38,899 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:38,899 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:38,899 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:38,899 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:38,899 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:40,286 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:40,289 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:40,289 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:40,290 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:40,290 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:40,290 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:40,293 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:40,293 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:40,302 - causal_playground - INFO - run_ci_tests - CI request received - x=A y=D conds=[]
+2025-12-08 15:22:40,307 - causal_playground - INFO - run_ci_tests - CI computed - x=A y=D conds=[] slices=1
+2025-12-08 15:22:42,801 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:42,801 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:42,801 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:42,801 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:42,803 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:42,803 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:42,804 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:42,804 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:44,171 - causal_playground - INFO - create_empty_dag - Created empty DAG
+2025-12-08 15:22:44,173 - causal_playground - INFO - add_node - Added node 'A' - nodes=1
+2025-12-08 15:22:44,174 - causal_playground - INFO - add_node - Added node 'B' - nodes=2
+2025-12-08 15:22:44,174 - causal_playground - INFO - add_node - Added node 'C' - nodes=3
+2025-12-08 15:22:44,174 - causal_playground - INFO - add_node - Added node 'D' - nodes=4
+2025-12-08 15:22:44,174 - causal_playground - INFO - add_node - Added node 'E' - nodes=5
+2025-12-08 15:22:44,174 - causal_playground - INFO - cytoscape_elements_to_dag - Converted cytoscape elements to DAG - nodes=5 edges=0
+2025-12-08 15:22:44,174 - causal_playground - INFO - dag_to_cytoscape_elements - Converted DAG to cytoscape elements - nodes=5 edges=0
+2025-12-08 15:22:44,179 - causal_playground - INFO - run_ci_tests - CI request received - x=C y=D conds=[]
+2025-12-08 15:22:44,186 - causal_playground - INFO - run_ci_tests - CI computed - x=C y=D conds=[] slices=1
