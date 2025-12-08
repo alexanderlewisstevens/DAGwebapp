@@ -11,27 +11,20 @@ from typing import List
 
 import numpy as np
 
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 import dash
-from dash import Dash, Input, Output, State, callback, dash_table, dcc, html, no_update
+from dash import Dash, Input, Output, State, ALL, callback, dash_table, dcc, html, no_update, ctx
 import dash_cytoscape as cyto
-import dash
 import networkx as nx
+import plotly.express as px
+import plotly.graph_objects as go
 
-from causal_playground.core import ci_engine, data_io, dag_model, plotting
+from causal_playground.core import ci_engine, data_io, dag_model
 from causal_playground.core.logging_config import setup_logging
 
-
-def fig_to_base64(fig) -> str:
-    """Convert a Matplotlib figure to a base64-encoded PNG data URL."""
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    buffer.seek(0)
-    encoded = base64.b64encode(buffer.read()).decode("ascii")
-    plt.close(fig)
-    return f"data:image/png;base64,{encoded}"
+px.defaults.template = "plotly_dark"
+px.defaults.color_discrete_sequence = ["#22d3ee", "#60a5fa", "#f59e0b", "#34d399", "#f472b6"]
+PLOT_BG = "#0f172a"
 
 
 def parse_contents(contents: str, filename: str | None) -> pd.DataFrame:
@@ -41,6 +34,8 @@ def parse_contents(contents: str, filename: str | None) -> pd.DataFrame:
     buffer = io.StringIO(decoded.decode("utf-8"))
     return data_io.load_csv(buffer)
 
+
+CYBORG_THEME = "https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/cyborg/bootstrap.min.css"
 
 setup_logging()
 logger = logging.getLogger("causal_playground")
@@ -62,15 +57,52 @@ def _dag_nodes_from_elements(elements: list[dict] | None) -> List[str]:
 
 def _base_stylesheet():
     return [
-        {"selector": "node", "style": {"label": "data(label)", "background-color": "#90caf9"}},
+        {
+            "selector": "node",
+            "style": {
+                "label": "data(label)",
+                "background-color": "#1f8efa",
+                "color": "#0b1020",
+                "font-size": "12px",
+                "text-outline-color": "#e0f2fe",
+                "text-outline-width": 2,
+                "width": 38,
+                "height": 38,
+                "border-width": 2,
+                "border-color": "#9ef4ff",
+            },
+        },
         {
             "selector": "edge",
             "style": {
                 "curve-style": "bezier",
                 "target-arrow-shape": "triangle",
-                "target-arrow-color": "#424242",
-                "line-color": "#424242",
+                "target-arrow-color": "#7dd3fc",
+                "line-color": "#7dd3fc",
                 "arrow-scale": 1.5,
+            },
+        },
+        {
+            "selector": "node:selected",
+            "style": {
+                "border-color": "#fbbf24",
+                "border-width": 3,
+                "background-color": "#22d3ee",
+                "text-outline-color": "#0f172a",
+                "text-outline-width": 3,
+                "shadow-blur": 12,
+                "shadow-color": "#22d3ee",
+                "shadow-opacity": 0.6,
+                "shadow-offset-x": 0,
+                "shadow-offset-y": 0,
+            },
+        },
+        {
+            "selector": "edge:selected",
+            "style": {
+                "line-color": "#fbbf24",
+                "target-arrow-color": "#fbbf24",
+                "width": 4,
             },
         },
     ]
@@ -127,12 +159,13 @@ def _generate_sample_df(name: str) -> pd.DataFrame | None:
         return df
     return None
 
-app = Dash(__name__, suppress_callback_exceptions=True)
+app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[CYBORG_THEME])
 server = app.server
 
 app.layout = html.Div(
     className="cp-root",
     children=[
+        dcc.Store(id="ci-roles", data={"x": None, "y": None, "z": []}),
         html.Header(
             className="cp-header",
             children=[
@@ -198,30 +231,22 @@ app.layout = html.Div(
                                 html.Div(
                                     [
                                         html.Label("Try a sample dataset"),
-                                        dcc.Dropdown(
-                                            id="sample-dataset-dropdown",
-                                            options=[
-                                                {"label": "Starter 5 vars (A→B→C, A→E, D noise)", "value": "starter_5vars"},
-                                                {"label": "Chain clean (A→B→C, no noise)", "value": "chain_clean"},
-                                                {"label": "Fork clean (B→A, B→C, no noise)", "value": "fork_clean"},
-                                                {"label": "Collider clean (A→C←B, no noise)", "value": "collider_clean"},
-                                                {"label": "Independent (A,B,C independent)", "value": "independent"},
+                                        html.Div(
+                                            [
+                                                html.Button("Starter 5 vars", id="sample-btn-starter", n_clicks=0, className="secondary-btn"),
+                                                html.Button("Chain", id="sample-btn-chain", n_clicks=0, className="secondary-btn"),
+                                                html.Button("Fork", id="sample-btn-fork", n_clicks=0, className="secondary-btn"),
+                                                html.Button("Collider", id="sample-btn-collider", n_clicks=0, className="secondary-btn"),
+                                                html.Button("Independent", id="sample-btn-independent", n_clicks=0, className="secondary-btn"),
                                             ],
-                                            placeholder="Choose a sample dataset",
+                                            className="button-row",
                                         ),
-                                        html.Button("Load sample dataset", id="load-sample-btn", n_clicks=0, className="primary-btn"),
                                     ],
                                     className="row",
                                 ),
                                 html.Div(id="metadata-display", className="meta-text"),
-                                html.Div(
-                                    className="row",
-                                    children=[
-                                        html.Div([html.Label("X"), dcc.Dropdown(id="x-dropdown", options=[], value=None)], className="col"),
-                                        html.Div([html.Label("Y"), dcc.Dropdown(id="y-dropdown", options=[], value=None)], className="col"),
-                                        html.Div([html.Label("Condition on Z"), dcc.Dropdown(id="z-dropdown", options=[], value=[], multi=True)], className="col"),
-                                    ],
-                                ),
+                                html.Div(id="column-buttons", className="pill-row"),
+                                html.Div(id="role-display", className="meta-text"),
                                 html.Button("Run CI tests", id="run-tests", n_clicks=0, className="primary-btn"),
                                 html.Div(id="summary-container"),
                                 dash_table.DataTable(
@@ -243,25 +268,9 @@ app.layout = html.Div(
                                     [
                                         html.Label("Select slice"),
                                         dcc.Dropdown(id="slice-dropdown", options=[], value=None),
-                                        html.Div([html.Img(id="plot-image", className="plot-img")]),
+                                        dcc.Graph(id="plot-graph", className="plot-img"),
                                         html.Div(id="ci-graphs-container", className="plot-grid"),
                                     ]
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            className="cp-card cp-card--narrow",
-                            children=[
-                                html.H3("DAG context"),
-                                cyto.Cytoscape(
-                                    id="ci-dag-context",
-                                    layout={"name": "cose"},
-                                    style={"width": "100%", "height": "380px", "border": "1px solid #1f2937"},
-                                    elements=[],
-                                    stylesheet=_base_stylesheet(),
-                                    userZoomingEnabled=False,
-                                    userPanningEnabled=False,
-                                    autoungrabify=True,
                                 ),
                             ],
                         ),
@@ -272,15 +281,6 @@ app.layout = html.Div(
                                 html.Div(
                                     className="row",
                                     children=[
-                                        html.Div(
-                                            [
-                                                html.Label("Add edge"),
-                                                dcc.Dropdown(id="dag-src-dropdown", placeholder="Source"),
-                                                dcc.Dropdown(id="dag-dst-dropdown", placeholder="Target", style={"marginTop": "6px"}),
-                                                html.Button("Add edge", id="dag-add-edge", n_clicks=0, className="secondary-btn"),
-                                            ],
-                                            className="col",
-                                        ),
                                         html.Div(
                                             [
                                                 html.Label("Mode"),
@@ -313,6 +313,9 @@ app.layout = html.Div(
                                     style={"width": "100%", "height": "420px", "border": "1px solid #1f2937"},
                                     elements=[],
                                     stylesheet=_base_stylesheet(),
+                                    userZoomingEnabled=False,
+                                    userPanningEnabled=False,
+                                    autoungrabify=True,
                                 ),
                                 html.Div(
                                     [
@@ -368,6 +371,7 @@ app.layout = html.Div(
                                             ],
                                             className="row",
                                         ),
+                                        html.Div(id="independencies-summary", className="meta-text", style={"marginTop": "6px"}),
                                     ],
                                 ),
                                 html.Div(id="dag-vs-data-stats", className="card-row"),
@@ -394,12 +398,15 @@ app.layout = html.Div(
     Output("data-store", "data"),
     Output("metadata-display", "children"),
     Input("upload-data", "contents"),
-    Input("load-sample-btn", "n_clicks"),
+    Input("sample-btn-starter", "n_clicks"),
+    Input("sample-btn-chain", "n_clicks"),
+    Input("sample-btn-fork", "n_clicks"),
+    Input("sample-btn-collider", "n_clicks"),
+    Input("sample-btn-independent", "n_clicks"),
     State("upload-data", "filename"),
-    State("sample-dataset-dropdown", "value"),
     prevent_initial_call=True,
 )
-def handle_data_load(upload_contents, sample_clicks, filename, sample_value):
+def handle_data_load(upload_contents, starter_clicks, chain_clicks, fork_clicks, collider_clicks, independent_clicks, filename):
     ctx = dash.callback_context
     if not ctx.triggered:
         return (no_update,) * 2
@@ -410,9 +417,18 @@ def handle_data_load(upload_contents, sample_clicks, filename, sample_value):
     if trigger_id == "upload-data" and upload_contents is not None:
         df = parse_contents(upload_contents, filename)
         source = f"upload:{filename}"
-    elif trigger_id == "load-sample-btn" and sample_value:
-        df = _generate_sample_df(sample_value)
-        source = f"sample:{sample_value}"
+    else:
+        btn_map = {
+            "sample-btn-starter": "starter_5vars",
+            "sample-btn-chain": "chain_clean",
+            "sample-btn-fork": "fork_clean",
+            "sample-btn-collider": "collider_clean",
+            "sample-btn-independent": "independent",
+        }
+        if trigger_id in btn_map:
+            sample_value = btn_map[trigger_id]
+            df = _generate_sample_df(sample_value)
+            source = f"sample:{sample_value}"
 
     if df is None:
         return (no_update,) * 2
@@ -431,29 +447,36 @@ def handle_data_load(upload_contents, sample_clicks, filename, sample_value):
 
 
 @callback(
-    Output("x-dropdown", "options"),
-    Output("y-dropdown", "options"),
-    Output("z-dropdown", "options"),
+    Output("column-buttons", "children"),
+    Output("role-display", "children"),
     Input("data-store", "data"),
-    Input("dag-store", "data"),
-    State("x-dropdown", "value"),
-    State("y-dropdown", "value"),
+    Input("ci-roles", "data"),
 )
-def update_dropdown_options(data_json, dag_data, x_value, y_value):
-    if not data_json and not dag_data:
-        return [], [], []
-    df_cols: List[str] = []
-    if data_json:
-        df = pd.read_json(StringIO(data_json), orient="split")
-        df_cols = data_io.get_categorical_columns(df)
-    dag_nodes = _dag_nodes_from_elements(dag_data)
-    option_values = sorted(set(df_cols) | set(dag_nodes))
-
-    x_options = [{"label": c, "value": c} for c in option_values]
-    y_options = [{"label": c, "value": c} for c in option_values if c != x_value]
-    z_blocklist = {x_value, y_value}
-    z_options = [{"label": c, "value": c} for c in option_values if c not in z_blocklist]
-    return x_options, y_options, z_options
+def render_column_buttons(data_json, roles):
+    roles = roles or {"x": None, "y": None, "z": []}
+    if not data_json:
+        return [], "Load data or choose a sample to set X/Y/Z."
+    df = pd.read_json(StringIO(data_json), orient="split")
+    cols = list(df.columns)
+    buttons = []
+    for col in cols:
+        classes = ["pill-btn"]
+        if roles.get("x") == col:
+            classes.append("active-x")
+        if roles.get("y") == col:
+            classes.append("active-y")
+        if col in (roles.get("z") or []):
+            classes.append("active-z")
+        buttons.append(
+            html.Button(
+                col,
+                id={"type": "col-btn", "col": col},
+                n_clicks=0,
+                className=" ".join(classes),
+            )
+        )
+    role_text = f"X: {roles.get('x') or '-'} | Y: {roles.get('y') or '-'} | Z: {', '.join(roles.get('z') or []) or '-'}"
+    return buttons, role_text
 
 
 @callback(
@@ -466,12 +489,14 @@ def update_dropdown_options(data_json, dag_data, x_value, y_value):
     Output("ci-graphs-container", "children"),
     Input("run-tests", "n_clicks"),
     Input("data-store", "data"),
-    Input("x-dropdown", "value"),
-    Input("y-dropdown", "value"),
-    Input("z-dropdown", "value"),
+    Input("ci-roles", "data"),
     prevent_initial_call=True,
 )
-def run_ci_tests(n_clicks, data_json, x, y, z_values):
+def run_ci_tests(n_clicks, data_json, roles):
+    roles = roles or {"x": None, "y": None, "z": []}
+    x = roles.get("x")
+    y = roles.get("y")
+    z_values = roles.get("z") or []
     if not data_json or not x or not y or x == y:
         return [], [], [], None, [], [], []
     df = pd.read_json(StringIO(data_json), orient="split")
@@ -557,7 +582,7 @@ def run_ci_tests(n_clicks, data_json, x, y, z_values):
     if max_abs_residual == 0:
         max_abs_residual = 1.0  # avoid zero-range
 
-    # Build per-slice normalized heatmaps with residuals coloring
+    # Build per-slice normalized heatmaps with residuals coloring (Plotly)
     graphs = []
     for idx, row in summary_df.iterrows():
         probs = row.get("contingency_probs", [])
@@ -567,21 +592,9 @@ def run_ci_tests(n_clicks, data_json, x, y, z_values):
         if probs and x_levels and y_levels and residual is not None:
             table = pd.DataFrame(probs, index=x_levels, columns=y_levels)
             residual_df = pd.DataFrame(residual, index=x_levels, columns=y_levels)
-            fig, ax = plt.subplots(figsize=(4, 3))
-            sns.heatmap(
-                residual_df,
-                annot=table.round(2),
-                fmt="",
-                cmap="RdBu_r",
-                vmin=-max_abs_residual,
-                vmax=max_abs_residual,
-                center=0,
-                cbar=False,
-                ax=ax,
-            )
-            badge = ""
             p_slice = row.get("p", None)
             v_slice = row.get("cramers_v", None)
+            badge = ""
             if p_slice is not None and v_slice is not None:
                 if p_slice >= 0.05:
                     badge = f" | p={p_slice:.3f}, V={v_slice:.2f} → Indep-like"
@@ -589,11 +602,8 @@ def run_ci_tests(n_clicks, data_json, x, y, z_values):
                     badge = f" | p={p_slice:.3f}, V={v_slice:.2f} → Weak dep"
                 else:
                     badge = f" | p={p_slice:.3f}, V={v_slice:.2f} → Strong dep"
-            # Binary contrast if applicable
             contrast_txt = ""
             if len(x_levels) == 2 and len(y_levels) == 2:
-                # Δ = P(Y=1|X=1) - P(Y=1|X=0)
-                # Assume ordering of levels matches table indices/columns
                 try:
                     p_y1_x1 = table.iloc[1, 1] / table.iloc[1].sum() if table.iloc[1].sum() > 0 else 0
                     p_y1_x0 = table.iloc[0, 1] / table.iloc[0].sum() if table.iloc[0].sum() > 0 else 0
@@ -601,11 +611,31 @@ def run_ci_tests(n_clicks, data_json, x, y, z_values):
                     contrast_txt = f" | Δ P({y}={y_levels[1]} | {x}={x_levels[1]} vs {x_levels[0]}) = {delta:.2f}"
                 except Exception:
                     pass
-            ax.set_title(f"Slice: {row['condition']}{badge}{contrast_txt}", fontsize=10)
-            ax.set_xlabel(y)
-            ax.set_ylabel(x)
-            fig.tight_layout()
-            graphs.append(html.Img(src=fig_to_base64(fig), style={"width": "340px"}))
+            fig = go.Figure(
+                data=[
+                    go.Heatmap(
+                        z=residual_df.values,
+                        x=y_levels,
+                        y=x_levels,
+                        colorscale="RdBu",
+                        zmin=-max_abs_residual,
+                        zmax=max_abs_residual,
+                        text=table.round(2).values,
+                        texttemplate="%{text}",
+                        showscale=False,
+                    )
+                ]
+            )
+            fig.update_layout(
+                margin=dict(l=40, r=10, t=40, b=30),
+                title=f"Slice: {row['condition']}{badge}{contrast_txt}",
+                xaxis_title=y,
+                yaxis_title=x,
+                height=320,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor=PLOT_BG,
+            )
+            graphs.append(dcc.Graph(figure=fig, style={"width": "360px"}))
 
     return display_records, columns, slice_options, slice_value, style_data_conditional, cards, graphs
 
@@ -620,22 +650,36 @@ def _get_slice(df: pd.DataFrame, conds: List[str], slice_index: int | None) -> p
 
 
 @callback(
-    Output("plot-image", "src"),
+    Output("plot-graph", "figure"),
     Input("slice-dropdown", "value"),
     State("summary-table", "data"),
     State("data-store", "data"),
-    State("x-dropdown", "value"),
-    State("y-dropdown", "value"),
-    State("z-dropdown", "value"),
+    State("ci-roles", "data"),
 )
-def update_slice_plot(slice_index, summary_data, data_json, x, y, z_values):
+def update_slice_plot(slice_index, summary_data, data_json, roles):
+    roles = roles or {"x": None, "y": None, "z": []}
+    x = roles.get("x")
+    y = roles.get("y")
+    z_values = roles.get("z") or []
+    fig = go.Figure()
     if not data_json or not x or not y:
-        return None
+        fig.add_annotation(text="Select X and Y to plot", showarrow=False)
+        fig.update_layout(template="plotly_dark", height=360)
+        return fig
     df = pd.read_json(StringIO(data_json), orient="split")
     conds: List[str] = z_values or []
     sub_df = _get_slice(df, conds, slice_index)
-    fig = plotting.plot_slice_countplot(sub_df, x, y)
-    return fig_to_base64(fig)
+    if sub_df.empty:
+        fig.add_annotation(text="No data for selection", showarrow=False)
+    else:
+        fig = px.histogram(sub_df, x=x, color=y, barmode="group")
+    fig.update_layout(
+        height=360,
+        margin=dict(l=40, r=10, t=40, b=40),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=PLOT_BG,
+    )
+    return fig
 
 
 @callback(Output("dag-cytoscape", "elements"), Input("dag-store", "data"))
@@ -644,44 +688,27 @@ def update_cytoscape_elements(store_data):
 
 
 @callback(
-    Output("dag-src-dropdown", "options"),
-    Output("dag-dst-dropdown", "options"),
-    Input("dag-store", "data"),
-)
-def update_dag_dropdowns(store_data):
-    dag = dag_model.cytoscape_elements_to_dag(store_data or [])
-    options = [{"label": n, "value": n} for n in dag.nodes]
-    return options, options
-
-
-@callback(
     Output("dag-store", "data"),
     Output("edge-source", "data"),
     Output("dag-status-message", "children"),
-    Input("dag-add-edge", "n_clicks"),
-    Input("dag-remove-selected", "n_clicks"),
     Input("upload-dag-settings", "contents"),
     Input("data-store", "data"),
     Input("dag-cytoscape", "tapNodeData"),
+    Input("dag-remove-selected", "n_clicks"),
     State("dag-mode", "value"),
     State("edge-source", "data"),
-    State("dag-src-dropdown", "value"),
-    State("dag-dst-dropdown", "value"),
     State("dag-cytoscape", "selectedNodeData"),
     State("dag-cytoscape", "selectedEdgeData"),
     State("dag-store", "data"),
     prevent_initial_call=True,
 )
 def update_dag_store(
-    add_edge_clicks,
-    remove_clicks,
     upload_contents,
     data_json,
     tap_node,
+    remove_clicks,
     dag_mode,
     edge_source,
-    src,
-    dst,
     selected_nodes,
     selected_edges,
     store_data,
@@ -720,21 +747,7 @@ def update_dag_store(
         logger.info("Auto-populated DAG from CSV columns: %s", list(df.columns))
         return dag_model.dag_to_cytoscape_elements(dag), None, "DAG auto-populated from dataset columns"
 
-    if trigger_id == "dag-add-edge":
-        if not src or not dst or src == dst:
-            return no_update, edge_source, status
-        dag.add_edge(src, dst)
-        if not nx.is_directed_acyclic_graph(dag):
-            dag.remove_edge(src, dst)
-            dag.add_edge(dst, src)
-            if not nx.is_directed_acyclic_graph(dag):
-                dag.remove_edge(dst, src)
-                status = "Edge would create a cycle; skipped."
-            else:
-                status = f"Cycle avoided by reversing to {dst} → {src}"
-        else:
-            status = f"Added edge {src} → {dst}"
-    elif trigger_id == "dag-remove-selected":
+    if trigger_id == "dag-remove-selected":
         if selected_nodes:
             node_ids = [node.get("id") for node in selected_nodes if node.get("id")]
             for node_id in node_ids:
@@ -748,37 +761,37 @@ def update_dag_store(
                 if src_edge and dst_edge and dag.has_edge(src_edge, dst_edge):
                     dag_model.remove_edge(dag, src_edge, dst_edge)
             status = "Removed selected edge(s)"
-    elif trigger_id == "dag-cytoscape" and dag_mode == "add" and tap_node:
-        node_id = tap_node.get("id")
-        if node_id:
-            if edge_source is None:
-                new_edge_source = node_id
-                status = f"Edge mode: source set to {node_id}. Click target."
-                return no_update, new_edge_source, status
-            else:
-                if edge_source == node_id:
-                    status = "Cannot create self-loop; choose a different target."
-                elif dag.has_edge(edge_source, node_id):
-                    status = "Edge already exists."
-                else:
-                    dag.add_edge(edge_source, node_id)
-                    if not nx.is_directed_acyclic_graph(dag):
-                        dag.remove_edge(edge_source, node_id)
-                        dag.add_edge(node_id, edge_source)
-                        if not nx.is_directed_acyclic_graph(dag):
-                            dag.remove_edge(node_id, edge_source)
-                            status = "Edge would create a cycle; skipped."
-                        else:
-                            status = f"Cycle avoided by reversing to {node_id} → {edge_source}"
-                    else:
-                        status = f"Added edge {edge_source} → {node_id}"
-                new_edge_source = None
-    else:
-        # Any other trigger clears edge source in select mode
-        if dag_mode != "add":
-            new_edge_source = None
+        new_edge_source = None
+        return dag_model.dag_to_cytoscape_elements(dag), new_edge_source, status
 
-    return dag_model.dag_to_cytoscape_elements(dag), new_edge_source, status
+    if trigger_id == "dag-cytoscape" and dag_mode == "add" and tap_node:
+        node_id = tap_node.get("id")
+        if not node_id:
+            return no_update, new_edge_source, no_update
+        if new_edge_source is None:
+            new_edge_source = node_id
+            status = f"Edge mode: source set to {node_id}. Click target."
+            return no_update, new_edge_source, status
+        if new_edge_source == node_id:
+            status = "Cannot create self-loop; choose a different target."
+            return no_update, new_edge_source, status
+        if dag.has_edge(new_edge_source, node_id):
+            status = "Edge already exists."
+            new_edge_source = None
+            return no_update, new_edge_source, status
+        dag.add_edge(new_edge_source, node_id)
+        if not nx.is_directed_acyclic_graph(dag):
+            dag.remove_edge(new_edge_source, node_id)
+            status = "Edge would create a cycle; skipped."
+        else:
+            status = f"Added edge {new_edge_source} → {node_id}"
+        new_edge_source = None
+        return dag_model.dag_to_cytoscape_elements(dag), new_edge_source, status
+
+    if dag_mode != "add":
+        new_edge_source = None
+
+    return dag_model.dag_to_cytoscape_elements(dag), new_edge_source, status or no_update
 
 
 @callback(
@@ -815,6 +828,7 @@ def load_settings_from_upload(upload_contents, cur_alpha, cur_max):
     Output("consistency-table", "columns"),
     Output("consistency-table", "style_data_conditional"),
     Output("dag-vs-data-stats", "children"),
+    Output("independencies-summary", "children"),
     Input("consistency-btn", "n_clicks"),
     State("dag-store", "data"),
     State("data-store", "data"),
@@ -826,13 +840,13 @@ def load_settings_from_upload(upload_contents, cur_alpha, cur_max):
 def compute_dag_vs_data(n_clicks, dag_data, data_json, alpha_value, max_independencies, mode_value):
     if not data_json or dag_data is None:
         logger.warning("DAG vs Data skipped - missing data or DAG")
-        return [], [], [], []
+        return [], [], [], [], "Load data and a DAG to test implied independencies."
     df = pd.read_json(StringIO(data_json), orient="split")
     dag = dag_model.cytoscape_elements_to_dag(dag_data)
     valid_nodes = [n for n in dag.nodes if n in df.columns]
     if not valid_nodes:
         logger.warning("DAG vs Data skipped - no DAG nodes overlap dataset columns")
-        return [], [], [], []
+        return [], [], [], [], "DAG nodes do not overlap dataset columns."
 
     edge_only = "edge_only" in (mode_value or [])
     implied_all: list[tuple[str, str, tuple[str, ...]]] = []
@@ -848,13 +862,13 @@ def compute_dag_vs_data(n_clicks, dag_data, data_json, alpha_value, max_independ
 
     if not implied_all:
         logger.info("DAG vs Data found no implied independencies to test")
-        return [], [], [], []
+        return [], [], [], [], "No implied independencies to test for this DAG/dataset."
     max_independencies = max_independencies or len(implied_all)
     implied = implied_all[: int(max_independencies)]
     alpha = alpha_value if alpha_value is not None else 0.01
     test_df = ci_engine.test_independencies(df, implied, alpha=alpha)
     if test_df.empty:
-        return [], [], [], []
+        return [], [], [], [], "No tests executed (empty result)."
     test_df["graph_says"] = "independent" if not edge_only else "edge_support"
     test_df["agreement"] = test_df["p_value"].apply(lambda p: "yes" if p >= alpha else "no")
     agreements = (test_df["agreement"] == "yes").sum()
@@ -892,7 +906,9 @@ def compute_dag_vs_data(n_clicks, dag_data, data_json, alpha_value, max_independ
         html.Div([html.Strong("Agreement rate"), html.Div(f"{rate:.2f}")], style={"padding": "8px", "border": "1px solid #eee"}),
         html.Div([html.Strong("Fit"), html.Div(f"{fit_label} @ α={alpha:.3f}")], style={"padding": "8px", "border": "1px solid #eee"}),
     ]
-    return test_df.to_dict("records"), columns, style_data_conditional, stats_cards
+    tested_label = "edge support checks" if edge_only else "implied independencies"
+    summary_text = f"Testing {len(test_df)} of {len(implied_all)} {tested_label} (α={alpha:.3f}). Agreements={agreements}, disagreements={disagreements}."
+    return test_df.to_dict("records"), columns, style_data_conditional, stats_cards, summary_text
 
 
 def _edge_support_styles(dag_data, data_json, alpha):
@@ -947,11 +963,13 @@ def _edge_support_styles(dag_data, data_json, alpha):
     State("dag-store", "data"),
     State("data-store", "data"),
     State("alpha-slider", "value"),
-    State("x-dropdown", "value"),
-    State("y-dropdown", "value"),
-    State("z-dropdown", "value"),
+    State("ci-roles", "data"),
 )
-def build_dag_stylesheet(selected_rows, table_data, dag_data, data_json, alpha_value, x_val, y_val, z_vals):
+def build_dag_stylesheet(selected_rows, table_data, dag_data, data_json, alpha_value, roles):
+    roles = roles or {"x": None, "y": None, "z": []}
+    x_val = roles.get("x")
+    y_val = roles.get("y")
+    z_vals = roles.get("z") or []
     stylesheet = _base_stylesheet()
     stylesheet += _edge_support_styles(dag_data, data_json, alpha_value if alpha_value is not None else 0.01)
     # Role highlighting
@@ -1002,50 +1020,6 @@ def toggle_help(n_clicks, current_style):
 
 
 @callback(
-    Output("ci-dag-context", "elements"),
-    Output("ci-dag-context", "stylesheet"),
-    Input("dag-store", "data"),
-    Input("x-dropdown", "value"),
-    Input("y-dropdown", "value"),
-    Input("z-dropdown", "value"),
-)
-def sync_ci_dag_context(dag_data, x_val, y_val, z_vals):
-    elements = dag_data or []
-    focus = {v for v in [x_val, y_val] if v} | set(z_vals or [])
-    stylesheet = _base_stylesheet()
-    # Dim everything by default
-    stylesheet.append({"selector": "node", "style": {"opacity": 0.25}})
-    stylesheet.append({"selector": "edge", "style": {"opacity": 0.15}})
-    # Highlight focus nodes and edges touching them
-    for node in focus:
-        stylesheet.append({"selector": f'[id = "{node}"]', "style": {"opacity": 1.0, "border-width": 3}})
-    if x_val:
-        stylesheet.append({"selector": f'[id = "{x_val}"]', "style": {"background-color": "#ffb74d", "opacity": 1.0}})
-    if y_val:
-        stylesheet.append({"selector": f'[id = "{y_val}"]', "style": {"background-color": "#ff7043", "opacity": 1.0}})
-    for z in z_vals or []:
-        stylesheet.append({"selector": f'[id = "{z}"]', "style": {"background-color": "#81c784", "opacity": 1.0}})
-    for edge in elements or []:
-        data = edge.get("data", {})
-        u, v = data.get("source"), data.get("target")
-        if u in focus or v in focus:
-            stylesheet.append(
-                {
-                    "selector": f'[source = "{u}"][target = "{v}"]',
-                    "style": {"opacity": 0.9, "line-color": "#546e7a", "target-arrow-color": "#546e7a", "width": 2},
-                }
-            )
-        if (x_val and y_val) and {u, v} == {x_val, y_val}:
-            stylesheet.append(
-                {
-                    "selector": f'[source = "{u}"][target = "{v}"]',
-                    "style": {"opacity": 1.0, "line-color": "#f57c00", "target-arrow-color": "#f57c00", "width": 3},
-                }
-            )
-    return elements, stylesheet
-
-
-@callback(
     Output("download-dag-settings", "data"),
     Input("download-dag-settings-btn", "n_clicks"),
     State("dag-store", "data"),
@@ -1073,144 +1047,124 @@ def download_dag_settings(n_clicks, dag_data, alpha_value, max_independencies):
 
 
 @callback(
-    Output("x-dropdown", "value"),
-    Output("y-dropdown", "value"),
-    Output("z-dropdown", "value"),
+    Output("ci-roles", "data"),
     Input("data-store", "data"),
+    Input({"type": "col-btn", "col": ALL}, "n_clicks"),
     Input("dag-use-xy", "n_clicks"),
     Input("dag-use-z", "n_clicks"),
     Input("dag-cytoscape", "tapNodeData"),
-    Input("ci-dag-context", "tapNodeData"),
     Input("consistency-table", "selected_rows"),
     Input("dag-cytoscape", "selectedNodeData"),
+    State({"type": "col-btn", "col": ALL}, "id"),
     State("consistency-table", "data"),
-    State("x-dropdown", "value"),
-    State("y-dropdown", "value"),
-    State("z-dropdown", "value"),
+    State("ci-roles", "data"),
     State("data-store", "data"),
     State("dag-mode", "value"),
     prevent_initial_call=True,
 )
-def sync_ci_values(
+def sync_roles(
     data_json_trigger,
+    col_clicks,
     dag_xy_clicks,
     dag_z_clicks,
     tap_node,
-    tap_node_ci,
     selected_rows,
     dag_selected_nodes,
+    col_ids,
     consistency_data,
-    cur_x,
-    cur_y,
-    cur_z,
+    roles,
     data_json_state,
     dag_mode,
 ):
-    """Single owner for CI dropdown values to avoid duplicate-output warnings."""
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return cur_x, cur_y, cur_z
-    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    roles = roles or {"x": None, "y": None, "z": []}
+    ctx_trigger = ctx.triggered_id
 
-    # Reset on data upload
-    if trigger_id == "data-store":
-        return None, None, []
+    if ctx_trigger == "data-store":
+        return {"x": None, "y": None, "z": []}
 
-    if trigger_id == "dag-use-xy":
+    df_cols = []
+    if data_json_state:
+        df_cols = list(pd.read_json(StringIO(data_json_state), orient="split").columns)
+
+    if isinstance(ctx_trigger, dict) and ctx_trigger.get("type") == "col-btn":
+        col = ctx_trigger.get("col")
+        if col not in df_cols:
+            return roles
+        # Toggle logic for buttons
+        if roles.get("x") == col:
+            roles["x"] = None
+        elif roles.get("y") == col:
+            roles["y"] = None
+        elif col in (roles.get("z") or []):
+            roles["z"] = [z for z in roles.get("z") or [] if z != col]
+        else:
+            if roles.get("x") is None:
+                roles["x"] = col
+            elif roles.get("y") is None:
+                roles["y"] = col
+            else:
+                roles["z"] = (roles.get("z") or []) + [col]
+        return roles
+
+    if ctx_trigger == "dag-use-xy":
         selected_nodes = dag_selected_nodes
         if not data_json_state or not selected_nodes:
             logger.warning("DAG→CI X/Y mapping skipped - no data or selection")
-            return no_update, no_update, cur_z
+            return roles
         selected_ids = [n.get("id") for n in selected_nodes if n.get("id")]
-        if len(selected_ids) != 2:
-            logger.warning("DAG→CI X/Y mapping requires exactly 2 nodes, got %s", len(selected_ids))
-            return no_update, no_update, cur_z
-        df = pd.read_json(StringIO(data_json_state), orient="split")
-        df_cols = set(df.columns)
         valid = [n for n in selected_ids if n in df_cols]
         if len(valid) != 2:
-            logger.warning("DAG→CI X/Y mapping ignored nodes not in dataset columns: %s", selected_ids)
-            return no_update, no_update, cur_z
-        logger.info("DAG→CI: set X=%s Y=%s from DAG selection", valid[0], valid[1])
-        return valid[0], valid[1], cur_z
+            logger.warning("DAG→CI X/Y mapping requires exactly 2 nodes, got %s", len(valid))
+            return roles
+        roles["x"], roles["y"] = valid[0], valid[1]
+        return roles
 
-    if trigger_id == "dag-use-z":
-        selected_nodes = dag_selected_nodes
+    if ctx_trigger == "dag-use-z":
+        selected_nodes = dag_selected_nodes or []
         if not data_json_state:
             logger.warning("DAG→CI Z mapping skipped - no data available")
-            return no_update, no_update, cur_z
-        selected_ids = [n.get("id") for n in (selected_nodes or []) if n.get("id")]
-        df = pd.read_json(StringIO(data_json_state), orient="split")
-        df_cols = set(df.columns)
+            return roles
+        selected_ids = [n.get("id") for n in selected_nodes if n.get("id")]
         valid = [n for n in selected_ids if n in df_cols]
-        dropped = set(selected_ids) - set(valid)
-        if dropped:
-            logger.warning("DAG→CI Z mapping dropped nodes not in dataset columns: %s", list(dropped))
-        logger.info("DAG→CI: set Z=%s from DAG selection", valid)
-        return cur_x, cur_y, valid
+        roles["z"] = valid
+        return roles
 
-    if trigger_id in {"dag-cytoscape", "ci-dag-context"}:
-        # Only respond in select mode
-        if dag_mode != "select":
-            return cur_x, cur_y, cur_z
-        tap = tap_node if trigger_id == "dag-cytoscape" else tap_node_ci
-        if not data_json_state or not tap:
-            return cur_x, cur_y, cur_z
-        node_id = tap.get("id")
-        if not node_id:
-            return cur_x, cur_y, cur_z
-        df = pd.read_json(StringIO(data_json_state), orient="split")
-        if node_id not in df.columns:
-            logger.warning("DAG tap ignored - node %s not in dataset columns", node_id)
-            return cur_x, cur_y, cur_z
-        # Toggling logic:
-        # - If node is both X and Y: swap X/Y
-        # - If node is X only: make it Y, clear X
-        # - If node is Y only: make it X, clear Y
-        # - If neither: set X then Y; else toggle in Z.
-        if cur_x == node_id and cur_y == node_id:
-            logger.info("DAG tap → swap X/Y on %s", node_id)
-            return cur_y, cur_x, cur_z
-        if cur_x == node_id:
-            logger.info("DAG tap → move X to Y using %s", node_id)
-            return None, node_id, cur_z
-        if cur_y == node_id:
-            logger.info("DAG tap → move Y to X using %s", node_id)
-            return node_id, None, cur_z
-        if cur_x is None:
-            logger.info("DAG tap → set X=%s", node_id)
-            return node_id, cur_y, cur_z
-        if cur_y is None and node_id != cur_x:
-            logger.info("DAG tap → set Y=%s", node_id)
-            return cur_x, node_id, cur_z
-        new_z = list(cur_z or [])
-        if node_id in new_z:
-            new_z = [z for z in new_z if z != node_id]
+    if ctx_trigger == "dag-cytoscape":
+        if dag_mode != "select" or not data_json_state or not tap_node:
+            return roles
+        node_id = tap_node.get("id")
+        if not node_id or node_id not in df_cols:
+            return roles
+        if roles.get("x") == node_id and roles.get("y") == node_id:
+            roles["x"], roles["y"] = roles["y"], roles["x"]
+        elif roles.get("x") == node_id:
+            roles["x"] = None
+            roles["y"] = node_id
+        elif roles.get("y") == node_id:
+            roles["y"] = None
+            roles["x"] = node_id
+        elif roles.get("x") is None:
+            roles["x"] = node_id
+        elif roles.get("y") is None and node_id != roles.get("x"):
+            roles["y"] = node_id
         else:
-            new_z.append(node_id)
-        logger.info("DAG tap → toggle Z; now Z=%s", new_z)
-        return cur_x, cur_y, new_z
+            z_list = roles.get("z") or []
+            roles["z"] = [z for z in z_list if z != node_id] if node_id in z_list else z_list + [node_id]
+        return roles
 
-    if trigger_id == "consistency-table" and consistency_data and selected_rows:
+    if ctx_trigger == "consistency-table" and consistency_data and selected_rows:
         row_index = selected_rows[0]
-        if row_index < 0 or row_index >= len(consistency_data):
-            return cur_x, cur_y, cur_z
-        row = consistency_data[row_index]
-        x_val = row.get("x")
-        y_val = row.get("y")
-        conds = row.get("conds") or []
-        df = pd.read_json(StringIO(data_json_state), orient="split") if data_json_state else None
-        df_cols = set(df.columns) if df is not None else set()
-        valid_x = x_val if x_val in df_cols else None
-        valid_y = y_val if y_val in df_cols else None
-        valid_z = [c for c in conds if c in df_cols]
-        if not valid_x or not valid_y:
-            logger.warning("DAG vs Data row mapping skipped - nodes not in dataset columns")
-            return cur_x, cur_y, cur_z
-        logger.info("DAG vs Data row → CI: X=%s Y=%s Z=%s", valid_x, valid_y, valid_z)
-        return valid_x, valid_y, valid_z
+        if 0 <= row_index < len(consistency_data):
+            row = consistency_data[row_index]
+            x_val = row.get("x")
+            y_val = row.get("y")
+            conds = row.get("conds") or []
+            roles["x"] = x_val if x_val in df_cols else roles.get("x")
+            roles["y"] = y_val if y_val in df_cols else roles.get("y")
+            roles["z"] = [c for c in conds if c in df_cols]
+        return roles
 
-    return cur_x, cur_y, cur_z
+    return roles
 
 
 def run_server(**kwargs):
